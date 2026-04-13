@@ -1,0 +1,349 @@
+﻿@page "/"
+@using InvoiceApp.Models
+@using InvoiceApp.Services
+@using System.Globalization
+@inject ICustomerService CustomerService
+@inject IProductService ProductService
+@inject IInvoiceService InvoiceService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Dashboard Overview</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Dashboard Overview</h1>
+    <a href="/invoices/create" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+        <i class="bi bi-plus-circle fa-sm text-white-50"></i> Generate Invoice
+    </a>
+</div>
+
+@if (isLoading)
+{
+    <div class="d-flex justify-content-center mt-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading dashboard...</span>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Financial Stats Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-primary border-4 shadow-sm h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-primary text-uppercase mb-1">
+                                Revenue (Month)</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">@revenueThisMonth.ToString("C")</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-calendar-check fs-2 text-muted opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-success border-4 shadow-sm h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-success text-uppercase mb-1">
+                                Total Earnings</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">@totalRevenue.ToString("C")</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-cash-stack fs-2 text-muted opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-danger border-4 shadow-sm h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-danger text-uppercase mb-1">Total VAT Collected
+                            </div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">@totalVatCollected.ToString("C")</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-percent fs-2 text-muted opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-warning border-4 shadow-sm h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-warning text-uppercase mb-1">
+                                Avg Invoice Value</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">@averageInvoiceValue.ToString("C")</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-graph-up fs-2 text-muted opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Operational Stats Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-info border-4 shadow-sm h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-info text-uppercase mb-1">Invoices Issued
+                            </div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">@invoicesCount</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-receipt fs-2 text-muted opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-secondary border-4 shadow-sm h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-secondary text-uppercase mb-1">
+                                Products Sold (Vol)</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">@totalProductsSold</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-box-seam fs-2 text-muted opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+             <div class="card border-start border-dark border-4 shadow-sm h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-dark text-uppercase mb-1">
+                                Catalog Size</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">@productsCount</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-tags fs-2 text-muted opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start border-primary border-4 shadow-sm h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-primary text-uppercase mb-1">
+                                Active Customers</div>
+                            <div class="h5 mb-0 fw-bold text-gray-800">@activeCustomers / @customersCount</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-people fs-2 text-muted opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts / Lists Area -->
+    <div class="row">
+        <!-- Rankings Area -->
+        <div class="col-lg-5 mb-4">
+            <!-- Top Customers -->
+            <div class="card shadow-sm mb-4 h-100" style="max-height: 380px;">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 fw-bold text-success">Top 5 Customers (Revenue)</h6>
+                </div>
+                <div class="card-body overflow-auto">
+                    @if (topCustomers.Any())
+                    {
+                        <ul class="list-group list-group-flush">
+                        @foreach (var cust in topCustomers)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <div>
+                                    <i class="bi bi-person-circle text-muted me-2"></i>@cust.Name
+                                </div>
+                                <span class="badge bg-success rounded-pill px-3 py-2">@cust.TotalSpent.ToString("C")</span>
+                            </li>
+                        }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p class="text-muted fst-italic text-center py-4">No top customers data.</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Top Products -->
+            <div class="card shadow-sm mb-4 h-100" style="max-height: 380px;">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 fw-bold text-info">Top 5 Products (Units Sold)</h6>
+                </div>
+                <div class="card-body overflow-auto">
+                    @if (topProducts.Any())
+                    {
+                        <ul class="list-group list-group-flush">
+                        @foreach (var prod in topProducts)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <div>
+                                    <i class="bi bi-box text-muted me-2"></i>@prod.Name
+                                </div>
+                                <span class="badge bg-info rounded-pill px-3 py-2">@prod.Quantity Units</span>
+                            </li>
+                        }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p class="text-muted fst-italic text-center py-4">No products sold yet.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="col-lg-7 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 fw-bold text-primary">Recent Invoices</h6>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick='() => NavigationManager.NavigateTo("/invoices")'>View All</button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Invoice #</th>
+                                    <th>Customer</th>
+                                    <th>Date</th>
+                                    <th class="text-end pe-4">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (recentInvoices.Any())
+                                {
+                                    @foreach (var inv in recentInvoices)
+                                    {
+                                        <tr style="cursor: pointer;" @onclick="() => NavigateToInvoice(inv.Id)">
+                                            <td class="ps-4"><span class="badge bg-light text-dark border">@inv.InvoiceNumber</span></td>
+                                            <td class="fw-semibold text-secondary">@(inv.Customer?.Name ?? "Unknown")</td>
+                                            <td><span class="text-muted small"><i class="bi bi-clock me-1"></i> @inv.IssueDate.ToString("MMM dd, yyyy")</span></td>
+                                            <td class="text-end pe-4 fw-bold text-primary">@inv.TotalPostTax.ToString("C")</td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="4" class="text-center py-5 text-muted">
+                                            <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                                            <p class="mb-0">No invoices generated yet.</p>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private int customersCount;
+    private int activeCustomers;
+    private int productsCount;
+    private int invoicesCount;
+    private decimal totalRevenue;
+    private decimal revenueThisMonth;
+    private decimal averageInvoiceValue;
+    private decimal totalVatCollected;
+    private decimal totalProductsSold;
+    
+    private List<Invoice> recentInvoices = new();
+    private List<(string Name, decimal TotalSpent)> topCustomers = new();
+    private List<(string Name, decimal Quantity)> topProducts = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var customers = await CustomerService.GetAllAsync();
+        customersCount = customers.Count;
+
+        var products = await ProductService.GetAllAsync();
+        productsCount = products.Count;
+
+        var invoices = (await InvoiceService.GetAllAsync()).ToList();
+        invoicesCount = invoices.Count;
+        
+        if (invoices.Any())
+        {
+            totalRevenue = invoices.Sum(i => i.TotalPostTax);
+            totalVatCollected = invoices.Sum(i => i.TotalVat);
+            activeCustomers = invoices.Select(i => i.CustomerId).Distinct().Count();
+            
+            var currentMonth = DateTime.Now.Month;
+            var currentYear = DateTime.Now.Year;
+            revenueThisMonth = invoices
+                .Where(i => i.IssueDate.Month == currentMonth && i.IssueDate.Year == currentYear)
+                .Sum(i => i.TotalPostTax);
+
+            averageInvoiceValue = totalRevenue / invoicesCount;
+
+            totalProductsSold = invoices.SelectMany(i => i.Lines).Sum(l => l.Quantity);
+
+            topCustomers = invoices
+                .Where(i => i.Customer != null)
+                .GroupBy(i => i.Customer!.Name)
+                .Select(g => (Name: g.Key, TotalSpent: g.Sum(i => i.TotalPostTax)))
+                .OrderByDescending(x => x.TotalSpent)
+                .Take(5)
+                .ToList();
+
+            topProducts = invoices
+                .SelectMany(i => i.Lines)
+                .Where(l => l.Product != null)
+                .GroupBy(l => l.Product!.Name)
+                .Select(g => (Name: g.Key, Quantity: g.Sum(l => l.Quantity)))
+                .OrderByDescending(x => x.Quantity)
+                .Take(5)
+                .ToList();
+        }
+        
+        recentInvoices = invoices.OrderByDescending(i => i.IssueDate).Take(10).ToList();
+        
+        isLoading = false;
+    }
+
+    private void NavigateToInvoice(int id)
+    {
+        NavigationManager.NavigateTo($"/invoices/{id}");
+    }
+}

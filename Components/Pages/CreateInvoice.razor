@@ -1,0 +1,181 @@
+@page "/invoices/create"
+@rendermode InteractiveServer
+@using InvoiceApp.Models
+@using InvoiceApp.Services
+@inject IInvoiceService InvoiceService
+@inject ICustomerService CustomerService
+@inject IProductService ProductService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Create Invoice</PageTitle>
+
+<h1>Create Invoice</h1>
+
+@if (customers == null || products == null)
+{
+    <p><em>Loading data...</em></p>
+}
+else
+{
+    <div class="card p-3 mb-4">
+        <EditForm Model="@newInvoice" OnValidSubmit="SaveInvoice">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Invoice Number</label>
+                    <InputText @bind-Value="newInvoice.InvoiceNumber" class="form-control" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Issue Date</label>
+                    <InputDate @bind-Value="newInvoice.IssueDate" class="form-control" />
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Customer</label>
+                    <InputSelect @bind-Value="newInvoice.CustomerId" class="form-select">
+                        <option value="0">-- Select a Customer --</option>
+                        @foreach (var cust in customers)
+                        {
+                            <option value="@cust.Id">@cust.Name</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Tax Stamp Amount</label>
+                    <InputNumber @bind-Value="newInvoice.TaxStampAmount" class="form-control" />
+                </div>
+            </div>
+
+            <hr />
+            <h4>Invoice Lines</h4>
+            
+            <div class="row mb-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label">Product</label>
+                    <select class="form-select" @bind="selectedProductId">
+                        <option value="0">-- Select a Product --</option>
+                        @foreach (var prod in activeProducts)
+                        {
+                            <option value="@prod.Id">@prod.Name - @prod.UnitPricePreTax.ToString("C")</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Quantity</label>
+                    <input type="number" step="1" @bind="selectedQuantity" class="form-control" min="1" />
+                </div>
+                <div class="col-md-4">
+                    <button type="button" class="btn btn-outline-primary w-100" @onclick="AddLineItem">Add Item</button>
+                </div>
+            </div>
+
+            <table class="table table-bordered mb-4">
+                <thead class="table-light">
+                    <tr>
+                        <th>Product</th>
+                        <th>Qty</th>
+                        <th>Unit Price</th>
+                        <th>VAT %</th>
+                        <th>Subtotal (Pre-tax)</th>
+                        <th>VAT</th>
+                        <th>Total</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in newInvoice.Lines)
+                    {
+                        <tr>
+                            <td>@(products.FirstOrDefault(p => p.Id == line.ProductId)?.Name ?? "Item")</td>
+                            <td>@line.Quantity</td>
+                            <td>@line.UnitPricePreTax.ToString("C")</td>
+                            <td>@line.VatRate%</td>
+                            <td>@line.SubtotalPreTax.ToString("C")</td>
+                            <td>@line.SubtotalVat.ToString("C")</td>
+                            <td>@line.SubtotalPostTax.ToString("C")</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-danger" @onclick="() => RemoveLineItem(line)">Remove</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="4" class="text-end">Pre-Tax Total:</th>
+                        <th colspan="4">@newInvoice.TotalPreTax.ToString("C")</th>
+                    </tr>
+                    <tr>
+                        <th colspan="4" class="text-end">VAT Total:</th>
+                        <th colspan="4">@newInvoice.TotalVat.ToString("C")</th>
+                    </tr>
+                    <tr>
+                        <th colspan="4" class="text-end">Tax Stamp & Post-Tax Total:</th>
+                        <th colspan="4">@newInvoice.TotalPostTax.ToString("C") (@newInvoice.TaxStampAmount.ToString("C") Stamp)</th>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <button type="submit" class="btn btn-success">Save Invoice</button>
+            <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+        </EditForm>
+    </div>
+}
+
+@code {
+    private Invoice newInvoice = new() { IssueDate = DateTime.Now, Lines = new List<InvoiceLine>() };
+    private List<Customer>? customers;
+    private List<Product>? products;
+    private IEnumerable<Product> activeProducts => products?.Where(p => p.IsActive) ?? Array.Empty<Product>();
+
+    private int selectedProductId;
+    private decimal selectedQuantity = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        customers = await CustomerService.GetAllAsync();
+        products = await ProductService.GetAllAsync();
+        newInvoice.InvoiceNumber = "INV-" + DateTime.Now.ToString("yyyyMMddHHmmss");
+    }
+
+    private void AddLineItem()
+    {
+        if (selectedProductId <= 0 || selectedQuantity <= 0) return;
+
+        var product = products?.FirstOrDefault(p => p.Id == selectedProductId);
+        if (product == null) return;
+
+        newInvoice.Lines.Add(new InvoiceLine
+        {
+            ProductId = product.Id,
+            Quantity = selectedQuantity,
+            UnitPricePreTax = product.UnitPricePreTax,
+            VatRate = product.VatRate
+        });
+
+        // Reset inputs
+        selectedProductId = 0;
+        selectedQuantity = 1;
+    }
+
+    private void RemoveLineItem(InvoiceLine line)
+    {
+        newInvoice.Lines.Remove(line);
+    }
+
+    private async Task SaveInvoice()
+    {
+        if (newInvoice.CustomerId <= 0) return; // Add validation logic as appropriate
+
+        await InvoiceService.CreateAsync(newInvoice);
+        NavigationManager.NavigateTo("/invoices");
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/invoices");
+    }
+}

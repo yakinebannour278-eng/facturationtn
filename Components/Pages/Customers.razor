@@ -1,0 +1,138 @@
+@page "/customers"
+@rendermode InteractiveServer
+@using InvoiceApp.Models
+@using InvoiceApp.Services
+@inject ICustomerService CustomerService
+
+<PageTitle>Customers</PageTitle>
+
+<h1>Customers</h1>
+
+@if (customers == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <button class="btn btn-primary mb-3" @onclick="ShowCreateForm">Add Customer</button>
+
+    @if (isEditing)
+    {
+        <div class="card p-3 mb-4">
+            <h4>@(currentCustomer.Id == 0 ? "Add Customer" : "Edit Customer")</h4>
+            <EditForm Model="@currentCustomer" OnValidSubmit="SaveCustomer">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="mb-3">
+                    <label class="form-label">Name</label>
+                    <InputText @bind-Value="currentCustomer.Name" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tax ID</label>
+                    <InputText @bind-Value="currentCustomer.TaxId" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Address</label>
+                    <InputText @bind-Value="currentCustomer.Address" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Contact Information</label>
+                    <InputText @bind-Value="currentCustomer.ContactInformation" class="form-control" />
+                </div>
+                <button type="submit" class="btn btn-success">Save</button>
+                <button type="button" class="btn btn-secondary" @onclick="CancelEdit">Cancel</button>
+            </EditForm>
+        </div>
+    }
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Tax ID</th>
+                <th>Address</th>
+                <th>Contact</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var customer in customers)
+            {
+                <tr>
+                    <td>@customer.Id</td>
+                    <td>@customer.Name</td>
+                    <td>@customer.TaxId</td>
+                    <td>@customer.Address</td>
+                    <td>@customer.ContactInformation</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => EditCustomer(customer)">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteCustomer(customer)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Customer>? customers;
+    private Customer currentCustomer = new();
+    private bool isEditing = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCustomers();
+    }
+
+    private async Task LoadCustomers()
+    {
+        customers = await CustomerService.GetAllAsync();
+    }
+
+    private void ShowCreateForm()
+    {
+        currentCustomer = new Customer();
+        isEditing = true;
+    }
+
+    private void EditCustomer(Customer customer)
+    {
+        currentCustomer = new Customer
+        {
+            Id = customer.Id,
+            Name = customer.Name,
+            TaxId = customer.TaxId,
+            Address = customer.Address,
+            ContactInformation = customer.ContactInformation
+        };
+        isEditing = true;
+    }
+
+    private async Task SaveCustomer()
+    {
+        if (currentCustomer.Id == 0)
+        {
+            await CustomerService.CreateAsync(currentCustomer);
+        }
+        else
+        {
+            await CustomerService.UpdateAsync(currentCustomer);
+        }
+        
+        isEditing = false;
+        await LoadCustomers();
+    }
+
+    private async Task DeleteCustomer(Customer customer)
+    {
+        await CustomerService.DeleteAsync(customer.Id);
+        await LoadCustomers();
+    }
+
+    private void CancelEdit()
+    {
+        isEditing = false;
+    }
+}
