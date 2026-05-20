@@ -1,0 +1,52 @@
+﻿@page "/settings"
+@rendermode InteractiveServer
+@inject ISettingsService SettingsService
+
+<PageTitle>System Settings</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h2>System settings</h2>
+        <p>Adjust the configured tax stamp value used when creating new invoices.</p>
+    </div>
+</div>
+
+<section class="content-grid single-column">
+    <div class="panel">
+        <h3>Tax stamp amount</h3>
+
+        <div class="form-grid three-columns">
+            <div>
+                <label>Current stamp value</label>
+                <InputNumber class="form-control" @bind-Value="_taxStampAmount" />
+            </div>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-primary" @onclick="SaveAsync">Save setting</button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <div class="status-message">@_message</div>
+        }
+
+        <p class="help-text">Existing invoices remain unchanged because each invoice stores its own tax stamp snapshot.</p>
+    </div>
+</section>
+
+@code {
+    private decimal _taxStampAmount = 1.000m;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _taxStampAmount = await SettingsService.GetTaxStampAmountAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        await SettingsService.SaveTaxStampAmountAsync(_taxStampAmount);
+        _message = $"Tax stamp updated to {_taxStampAmount:N3}.";
+    }
+}

@@ -1,0 +1,337 @@
+﻿@page "/invoices"
+@rendermode InteractiveServer
+@inject IInvoiceService InvoiceService
+@inject ICustomerService CustomerService
+@inject IProductService ProductService
+@inject ISettingsService SettingsService
+
+<PageTitle>Invoices</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h2>Invoice processing</h2>
+        <p>Create dynamic invoices with frozen product snapshots, VAT grouping, and tax stamp persistence.</p>
+    </div>
+</div>
+
+<section class="content-grid single-column">
+    <div class="panel">
+        <h3>Create invoice</h3>
+
+        <div class="form-grid three-columns">
+            <div>
+                <label>Customer</label>
+                <select class="form-select" @bind="_draft.CustomerId">
+                    <option value="0">Select a customer</option>
+                    @foreach (var customer in _customers)
+                    {
+                        <option value="@customer.Id">@customer.Name</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label>Issue date</label>
+                <InputDate class="form-control" @bind-Value="_draft.IssueDate" />
+            </div>
+            <div>
+                <label>Tax stamp for new invoices</label>
+                <input class="form-control" value="@_taxStampAmount.ToString("N3")" disabled />
+            </div>
+        </div>
+
+        <div class="line-items-header">
+            <h4>Lines</h4>
+            <button class="btn btn-outline-primary btn-sm" type="button" @onclick="AddLine">Add line</button>
+        </div>
+
+        <table class="table table-sm invoice-lines">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Qty</th>
+                    <th>Unit pre-tax</th>
+                    <th>VAT</th>
+                    <th>Line pre-tax</th>
+                    <th>Line VAT</th>
+                    <th>Line post-tax</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var line in _draft.Lines)
+                {
+                    <tr>
+                        <td>
+                            <select class="form-select" value="@line.ProductId" @onchange="e => OnProductChanged(line, e)">
+                                <option value="0">Choose product</option>
+                                @foreach (var product in _products)
+                                {
+                                    <option value="@product.Id">@product.Name @(product.IsActive ? "" : "(inactive)")</option>
+                                }
+                            </select>
+                        </td>
+                        <td>
+                            <input class="form-control" type="number" step="0.001" @bind="line.Quantity" @bind:event="oninput" />
+                        </td>
+                        <td>@line.UnitPricePreTax.ToString("N3")</td>
+                        <td>@Rate(line.VatRate)</td>
+                        <td>@line.LinePreTax.ToString("N3")</td>
+                        <td>@line.LineVat.ToString("N3")</td>
+                        <td>@line.LinePostTax.ToString("N3")</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger" type="button" @onclick="() => RemoveLine(line)">Remove</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="totals-strip">
+            <div><span>Pre-tax</span><strong>@DraftPreTax.ToString("N3")</strong></div>
+            <div><span>VAT</span><strong>@DraftVat.ToString("N3")</strong></div>
+            <div><span>Tax stamp</span><strong>@_taxStampAmount.ToString("N3")</strong></div>
+            <div><span>Post-tax</span><strong>@DraftPostTax.ToString("N3")</strong></div>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-primary" @onclick="SaveAsync">Save invoice</button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <div class="status-message">@_message</div>
+        }
+    </div>
+
+    <div class="panel">
+        <h3>VAT by rate for current draft</h3>
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Rate</th>
+                    <th>Total VAT</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in DraftVatByRate)
+                {
+                    <tr>
+                        <td>@Rate(item.Key)</td>
+                        <td>@item.Value.ToString("N3")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="content-grid single-column">
+    <div class="panel">
+        <h3>Invoices</h3>
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Number</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Pre-tax</th>
+                    <th>VAT</th>
+                    <th>Stamp</th>
+                    <th>Post-tax</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var invoice in _invoices)
+                {
+                    <tr>
+                        <td>@invoice.InvoiceNumber</td>
+                        <td>@invoice.IssueDate.ToString("yyyy-MM-dd")</td>
+                        <td>@invoice.Customer?.Name</td>
+                        <td>@invoice.TotalPreTax.ToString("N3")</td>
+                        <td>@invoice.TotalVAT.ToString("N3")</td>
+                        <td>@invoice.TaxStampAmount.ToString("N3")</td>
+                        <td>@invoice.TotalPostTax.ToString("N3")</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => SelectInvoice(invoice.Id)">View</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (_selectedInvoice is not null)
+    {
+        <div class="panel">
+            <h3>Invoice @(_selectedInvoice.InvoiceNumber)</h3>
+            <p>@_selectedInvoice.Customer?.Name - @_selectedInvoice.IssueDate.ToString("yyyy-MM-dd")</p>
+
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Qty</th>
+                        <th>Unit</th>
+                        <th>VAT</th>
+                        <th>Pre-tax</th>
+                        <th>VAT</th>
+                        <th>Post-tax</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in _selectedInvoice.Lines)
+                    {
+                        <tr>
+                            <td>@line.ProductNameSnapshot</td>
+                            <td>@line.Quantity.ToString("N3")</td>
+                            <td>@line.UnitPricePreTax.ToString("N3")</td>
+                            <td>@Rate(line.VatRate)</td>
+                            <td>@line.SubtotalPreTax.ToString("N3")</td>
+                            <td>@line.VatAmount.ToString("N3")</td>
+                            <td>@line.SubtotalPostTax.ToString("N3")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div class="totals-strip">
+                <div><span>Pre-tax</span><strong>@_selectedInvoice.TotalPreTax.ToString("N3")</strong></div>
+                <div><span>VAT</span><strong>@_selectedInvoice.TotalVAT.ToString("N3")</strong></div>
+                <div><span>Tax stamp</span><strong>@_selectedInvoice.TaxStampAmount.ToString("N3")</strong></div>
+                <div><span>Post-tax</span><strong>@_selectedInvoice.TotalPostTax.ToString("N3")</strong></div>
+            </div>
+
+            <h4>VAT breakdown</h4>
+            <ul class="breakdown-list">
+                @foreach (var item in SelectedInvoiceVatByRate)
+                {
+                    <li>@Rate(item.Key): @item.Value.ToString("N3")</li>
+                }
+            </ul>
+        </div>
+    }
+</section>
+
+@code {
+    private List<Customer> _customers = new();
+    private List<Product> _products = new();
+    private List<Invoice> _invoices = new();
+    private InvoiceDraft _draft = new();
+    private Invoice? _selectedInvoice;
+    private decimal _taxStampAmount = 1.000m;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        ResetDraft();
+    }
+
+    private async Task LoadAsync()
+    {
+        _customers = await CustomerService.GetAllAsync();
+        _products = await ProductService.GetAllAsync();
+        _taxStampAmount = await SettingsService.GetTaxStampAmountAsync();
+        _invoices = await InvoiceService.GetAllAsync();
+    }
+
+    private void ResetDraft()
+    {
+        _draft = new InvoiceDraft
+        {
+            IssueDate = DateTime.Today
+        };
+
+        AddLine();
+    }
+
+    private void AddLine()
+    {
+        var line = new InvoiceLineDraft();
+        if (_products.Count > 0)
+        {
+            ApplyProductSnapshot(line, _products[0].Id);
+        }
+
+        _draft.Lines.Add(line);
+    }
+
+    private void RemoveLine(InvoiceLineDraft line)
+    {
+        _draft.Lines.Remove(line);
+        if (_draft.Lines.Count == 0)
+        {
+            AddLine();
+        }
+    }
+
+    private void OnProductChanged(InvoiceLineDraft line, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var productId))
+        {
+            ApplyProductSnapshot(line, productId);
+        }
+    }
+
+    private void ApplyProductSnapshot(InvoiceLineDraft line, int productId)
+    {
+        line.ProductId = productId;
+        var product = _products.FirstOrDefault(x => x.Id == productId);
+        if (product is null)
+        {
+            line.ProductName = string.Empty;
+            line.UnitPricePreTax = 0m;
+            line.VatRate = 0m;
+            return;
+        }
+
+        line.ProductName = product.Name;
+        line.UnitPricePreTax = product.UnitPricePreTax;
+        line.VatRate = product.VatRate;
+    }
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            if (_draft.CustomerId == 0)
+            {
+                _message = "Please select a customer before saving.";
+                return;
+            }
+
+            var invoice = await InvoiceService.CreateAsync(_draft);
+            _message = $"Invoice {invoice.InvoiceNumber} saved successfully.";
+            await LoadAsync();
+            ResetDraft();
+            _selectedInvoice = await InvoiceService.GetByIdAsync(invoice.Id);
+        }
+        catch (Exception ex)
+        {
+            _message = ex.Message;
+        }
+    }
+
+    private async Task SelectInvoice(int invoiceId)
+    {
+        _selectedInvoice = await InvoiceService.GetByIdAsync(invoiceId);
+    }
+
+    private decimal DraftPreTax => _draft.Lines.Sum(x => x.LinePreTax);
+
+    private decimal DraftVat => _draft.Lines.Sum(x => x.LineVat);
+
+    private decimal DraftPostTax => DraftPreTax + DraftVat + _taxStampAmount;
+
+    private IReadOnlyDictionary<decimal, decimal> DraftVatByRate => _draft.Lines
+        .GroupBy(x => x.VatRate)
+        .ToDictionary(g => g.Key, g => g.Sum(x => x.LineVat));
+
+    private IReadOnlyDictionary<decimal, decimal> SelectedInvoiceVatByRate => _selectedInvoice?.Lines
+        .GroupBy(x => x.VatRate)
+        .ToDictionary(g => g.Key, g => g.Sum(x => x.VatAmount))
+        ?? new Dictionary<decimal, decimal>();
+
+    private static string Rate(decimal value) => $"{decimal.Round(value * 100m, 0)}%";
+}

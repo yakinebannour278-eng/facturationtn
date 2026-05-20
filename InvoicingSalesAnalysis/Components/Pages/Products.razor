@@ -1,0 +1,140 @@
+﻿@page "/products"
+@rendermode InteractiveServer
+@inject IProductService ProductService
+
+<PageTitle>Products</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h2>Product catalog</h2>
+        <p>Maintain pre-tax prices and VAT rates per product.</p>
+    </div>
+</div>
+
+<section class="content-grid single-column">
+    <div class="panel">
+        <h3>@(_model.Id == 0 ? "Add product" : "Edit product")</h3>
+
+        <EditForm Model="_model" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="form-grid three-columns">
+                <div>
+                    <label>Name / Designation</label>
+                    <InputText class="form-control" @bind-Value="_model.Name" />
+                </div>
+                <div>
+                    <label>Unit Price Pre-Tax</label>
+                    <InputNumber class="form-control" @bind-Value="_model.UnitPricePreTax" />
+                </div>
+                <div>
+                    <label>VAT Rate</label>
+                    <InputNumber class="form-control" @bind-Value="_model.VatRate" />
+                </div>
+                <div>
+                    <label>Active Status</label>
+                    <InputCheckbox class="form-check-input" @bind-Value="_model.IsActive" />
+                </div>
+            </div>
+
+            <div class="action-row">
+                <button class="btn btn-primary" type="submit">Save product</button>
+                <button class="btn btn-outline-secondary" type="button" @onclick="ResetAsync">Reset</button>
+            </div>
+        </EditForm>
+
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <div class="status-message">@_message</div>
+        }
+    </div>
+
+    <div class="panel">
+        <h3>Existing products</h3>
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Pre-tax</th>
+                    <th>VAT</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var product in _products)
+                {
+                    <tr>
+                        <td>@product.Name</td>
+                        <td>@product.UnitPricePreTax.ToString("N3")</td>
+                        <td>@Rate(product.VatRate)</td>
+                        <td>@(product.IsActive ? "Active" : "Inactive")</td>
+                        <td class="row-actions">
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => EditAsync(product.Id)">Edit</button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(product.Id)">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@code {
+    private List<Product> _products = new();
+    private Product _model = new();
+    private string? _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _products = await ProductService.GetAllAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        var isNew = _model.Id == 0;
+        await ProductService.SaveAsync(_model);
+        _message = isNew ? "Product added." : "Product updated.";
+        await ResetAsync();
+    }
+
+    private async Task EditAsync(int id)
+    {
+        var product = await ProductService.GetByIdAsync(id);
+        if (product is null)
+        {
+            return;
+        }
+
+        _model = product;
+        _message = null;
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        try
+        {
+            await ProductService.DeleteAsync(id);
+            _message = "Product deleted.";
+            await ResetAsync();
+        }
+        catch (Exception ex)
+        {
+            _message = ex.Message;
+        }
+    }
+
+    private async Task ResetAsync()
+    {
+        _model = new Product { IsActive = true, VatRate = 0.19m };
+        await LoadAsync();
+    }
+
+    private static string Rate(decimal value) => $"{decimal.Round(value * 100m, 0)}%";
+}

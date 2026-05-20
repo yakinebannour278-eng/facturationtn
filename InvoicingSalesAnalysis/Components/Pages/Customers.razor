@@ -1,0 +1,136 @@
+﻿@page "/customers"
+@rendermode InteractiveServer
+@inject ICustomerService CustomerService
+
+<PageTitle>Customers</PageTitle>
+
+<div class="page-header">
+    <div>
+        <h2>Customer management</h2>
+        <p>Create and maintain Tunisian customer records used on invoices.</p>
+    </div>
+</div>
+
+<section class="content-grid single-column">
+    <div class="panel">
+        <h3>@(_model.Id == 0 ? "Add customer" : "Edit customer")</h3>
+
+        <EditForm Model="_model" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="form-grid">
+                <div>
+                    <label>Name / Company Name</label>
+                    <InputText class="form-control" @bind-Value="_model.Name" />
+                </div>
+                <div>
+                    <label>Tax ID</label>
+                    <InputText class="form-control" @bind-Value="_model.TaxId" />
+                </div>
+                <div>
+                    <label>Address</label>
+                    <InputText class="form-control" @bind-Value="_model.Address" />
+                </div>
+                <div>
+                    <label>Contact Information</label>
+                    <InputText class="form-control" @bind-Value="_model.ContactInfo" />
+                </div>
+            </div>
+
+            <div class="action-row">
+                <button class="btn btn-primary" type="submit">Save customer</button>
+                <button class="btn btn-outline-secondary" type="button" @onclick="ResetAsync">Reset</button>
+            </div>
+        </EditForm>
+
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <div class="status-message">@_message</div>
+        }
+    </div>
+
+    <div class="panel">
+        <h3>Existing customers</h3>
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Tax ID</th>
+                    <th>Contact</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var customer in _customers)
+                {
+                    <tr>
+                        <td>@customer.Name</td>
+                        <td>@customer.TaxId</td>
+                        <td>@customer.ContactInfo</td>
+                        <td class="row-actions">
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => EditAsync(customer.Id)">Edit</button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(customer.Id)">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@code {
+    private List<Customer> _customers = new();
+    private Customer _model = new();
+    private string? _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _customers = await CustomerService.GetAllAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        var isNew = _model.Id == 0;
+        await CustomerService.SaveAsync(_model);
+        _message = isNew ? "Customer added." : "Customer updated.";
+        await ResetAsync();
+    }
+
+    private async Task EditAsync(int id)
+    {
+        var customer = await CustomerService.GetByIdAsync(id);
+        if (customer is null)
+        {
+            return;
+        }
+
+        _model = customer;
+        _message = null;
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        try
+        {
+            await CustomerService.DeleteAsync(id);
+            _message = "Customer deleted.";
+            await ResetAsync();
+        }
+        catch (Exception ex)
+        {
+            _message = ex.Message;
+        }
+    }
+
+    private async Task ResetAsync()
+    {
+        _model = new Customer();
+        await LoadAsync();
+    }
+}
