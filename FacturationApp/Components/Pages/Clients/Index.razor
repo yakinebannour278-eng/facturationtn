@@ -1,0 +1,286 @@
+@page "/clients"
+@rendermode InteractiveServer
+@inject IClientService ClientService
+@inject NavigationManager Nav
+@using FacturationApp.Models
+@using FacturationApp.Services
+
+<PageTitle>Clients | FacturaTN</PageTitle>
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <div class="page-title">Gestion des Clients</div>
+            <div class="page-subtitle">@clients.Count client(s) trouvé(s)</div>
+        </div>
+        <button class="btn btn-primary" @onclick="NouveauClient">Nouveau Client</button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert @(isError ? "alert-danger" : "alert-success")">@message</div>
+}
+
+<!-- Filtres temps réel -->
+<div class="filters-bar">
+    <input class="form-control" placeholder="Nom, email, ville, matricule..."
+           @bind="search" @oninput="OnSearchInput" />
+    <select class="form-control" @bind="filtreActif" @bind:after="Rechercher">
+        <option value="true">Actifs seulement</option>
+        <option value="false">Inactifs seulement</option>
+        <option value="">Tous les statuts</option>
+    </select>
+    <button class="btn btn-outline" @onclick="ResetFiltres">Reinitialiser</button>
+    <span style="color:var(--text-muted);font-size:.8rem">@clients.Count résultat(s)</span>
+</div>
+
+<LoadingSpinner IsLoading="@isLoading" />
+
+@if (!isLoading)
+{
+    <div class="card">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nom &amp; Prénom</th>
+                        <th>Email</th>
+                        <th>Téléphone</th>
+                        <th>Ville</th>
+                        <th>Matricule Fiscale</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!clients.Any())
+                    {
+                        <tr>
+                            <td colspan="8" style="text-align:center;color:var(--text-muted);padding:2.5rem">
+                                Aucun client trouvé.
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var c in clients)
+                    {
+                        <tr>
+                            <td style="color:var(--text-muted)">#@c.Id</td>
+                            <td>
+                                <strong>@c.Nom @c.Prenom</strong>
+                                <div style="font-size:.75rem;color:var(--text-muted)">
+                                    Depuis @c.DateCreation.ToString("MM/yyyy")
+                                </div>
+                            </td>
+                            <td>@c.Email</td>
+                            <td>@c.Telephone</td>
+                            <td>@(c.Ville ?? "—")</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(c.MatriculeFiscale))
+                                { <span class="badge badge-secondary">@c.MatriculeFiscale</span> }
+                                else { <span style="color:var(--text-muted)">—</span> }
+                            </td>
+                            <td>
+                                @if (c.Actif)
+                                { <span class="badge badge-success">Actif</span> }
+                                else
+                                { <span class="badge badge-danger">Inactif</span> }
+                            </td>
+                            <td style="white-space:nowrap">
+                                <button class="btn btn-sm btn-outline" @onclick="() => Modifier(c)" title="Modifier">Editer</button>
+                                <button class="btn btn-sm btn-danger" @onclick="() => ConfirmerSuppression(c)" title="Désactiver">Suppr</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Modal formulaire -->
+@if (showForm)
+{
+    <div class="modal-overlay" @onclick="FermerModal">
+        <div class="modal-box modal-lg" @onclick:stopPropagation>
+            <h5 style="margin-bottom:1.5rem;font-size:1.1rem;font-weight:700">
+                @(editingClient.Id == 0 ? "Nouveau Client" : "Modifier Client")
+            </h5>
+            <EditForm Model="editingClient" OnValidSubmit="Sauvegarder">
+                <DataAnnotationsValidator />
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label class="form-label">Nom *</label>
+                            <InputText class="form-control" @bind-Value="editingClient.Nom" placeholder="Nom de famille" />
+                            <ValidationMessage For="() => editingClient.Nom" class="validation-message" />
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label class="form-label">Prénom *</label>
+                            <InputText class="form-control" @bind-Value="editingClient.Prenom" placeholder="Prénom" />
+                            <ValidationMessage For="() => editingClient.Prenom" class="validation-message" />
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email *</label>
+                    <InputText class="form-control" @bind-Value="editingClient.Email" placeholder="email@exemple.tn" />
+                    <ValidationMessage For="() => editingClient.Email" class="validation-message" />
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label class="form-label">Téléphone *</label>
+                            <InputText class="form-control" @bind-Value="editingClient.Telephone" placeholder="+216 XX XXX XXX" />
+                            <ValidationMessage For="() => editingClient.Telephone" class="validation-message" />
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label class="form-label">Matricule Fiscale</label>
+                            <InputText class="form-control" @bind-Value="editingClient.MatriculeFiscale"
+                                       placeholder="0000000/A/M/000" />
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Adresse *</label>
+                    <InputTextArea class="form-control" @bind-Value="editingClient.Adresse"
+                                   rows="2" placeholder="Numéro, rue, quartier..." />
+                    <ValidationMessage For="() => editingClient.Adresse" class="validation-message" />
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label class="form-label">Ville</label>
+                            <InputText class="form-control" @bind-Value="editingClient.Ville" placeholder="Tunis" />
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label class="form-label">Code Postal</label>
+                            <InputText class="form-control" @bind-Value="editingClient.CodePostal" placeholder="1000" />
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+                        <InputCheckbox @bind-Value="editingClient.Actif" />
+                        <span>Client actif</span>
+                    </label>
+                </div>
+                <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)">
+                    <button type="button" class="btn btn-outline" @onclick="FermerModal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+<!-- Confirm dialog -->
+<ConfirmDialog
+    Visible="@(clientASupprimer != null)"
+    Title="Désactiver le client ?"
+    Message="@($"Désactiver {clientASupprimer?.Nom} {clientASupprimer?.Prenom} ? Il ne pourra plus être sélectionné dans les nouvelles factures.")"
+    ConfirmLabel="Désactiver"
+    OnConfirm="SupprimerConfirme"
+    OnCancel="() => clientASupprimer = null" />
+
+@code {
+    private List<Client> clients = new();
+    private Client editingClient = new();
+    private Client? clientASupprimer;
+    private bool showForm = false;
+    private bool isLoading = true;
+    private string search = "";
+    private string filtreActif = "true";
+    private string message = "";
+    private bool isError = false;
+    private System.Timers.Timer? debounceTimer;
+
+    protected override async Task OnInitializedAsync() => await Rechercher();
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? "";
+        debounceTimer?.Stop();
+        debounceTimer = new System.Timers.Timer(350);
+        debounceTimer.Elapsed += async (s, ev) =>
+        {
+            debounceTimer?.Stop();
+            await InvokeAsync(async () => { await Rechercher(); StateHasChanged(); });
+        };
+        debounceTimer.AutoReset = false;
+        debounceTimer.Start();
+    }
+
+    private async Task Rechercher()
+    {
+        isLoading = true;
+        bool? actif = filtreActif switch { "true" => true, "false" => false, _ => null };
+        clients = await ClientService.GetAllAsync(search, actif);
+        isLoading = false;
+    }
+
+    private void NouveauClient()
+    {
+        editingClient = new Client { Actif = true };
+        showForm = true;
+    }
+
+    private void Modifier(Client c)
+    {
+        editingClient = new Client
+        {
+            Id = c.Id, Nom = c.Nom, Prenom = c.Prenom,
+            Email = c.Email, Telephone = c.Telephone, Adresse = c.Adresse,
+            Ville = c.Ville, CodePostal = c.CodePostal,
+            MatriculeFiscale = c.MatriculeFiscale, Actif = c.Actif
+        };
+        showForm = true;
+    }
+
+    private void FermerModal() => showForm = false;
+    private void ConfirmerSuppression(Client c) => clientASupprimer = c;
+
+    private async Task Sauvegarder()
+    {
+        try
+        {
+            if (editingClient.Id == 0)
+                await ClientService.CreateAsync(editingClient);
+            else
+                await ClientService.UpdateAsync(editingClient);
+
+            message = "Client sauvegardé avec succès.";
+            isError = false;
+            showForm = false;
+            await Rechercher();
+        }
+        catch (Exception ex)
+        {
+            message = $"Erreur : {ex.Message}";
+            isError = true;
+        }
+    }
+
+    private async Task SupprimerConfirme()
+    {
+        if (clientASupprimer == null) return;
+        await ClientService.DeleteAsync(clientASupprimer.Id);
+        message = $"Client {clientASupprimer.Nom} {clientASupprimer.Prenom} désactivé.";
+        clientASupprimer = null;
+        await Rechercher();
+    }
+
+    private async Task ResetFiltres()
+    {
+        search = "";
+        filtreActif = "true";
+        await Rechercher();
+    }
+}

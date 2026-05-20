@@ -1,0 +1,177 @@
+@page "/dashboard/taxes"
+@rendermode InteractiveServer
+@inject IDashboardService DashboardService
+
+<PageTitle>Dashboard Fiscal | FacturaTN</PageTitle>
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <div class="page-title">Dashboard Fiscal & TVA</div>
+            <div class="page-subtitle">TVA collectée et timbres fiscaux — Modèle tunisien</div>
+        </div>
+    </div>
+</div>
+
+<div class="filters-bar">
+    <label class="form-label" style="margin:0;white-space:nowrap">Période :</label>
+    <input type="date" class="form-control" @bind="dateDebut" @bind:after="ChargerDonnees" />
+    <span style="color:var(--text-muted)">→</span>
+    <input type="date" class="form-control" @bind="dateFin" @bind:after="ChargerDonnees" />
+    <button class="btn btn-outline" @onclick="ResetPeriode">Toutes périodes</button>
+</div>
+
+<LoadingSpinner IsLoading="@isLoading" Message="Calcul des données fiscales..." />
+
+@if (!isLoading)
+{
+    <!-- BENTO ROW 1: 3 gradient KPI cards -->
+    <div class="bento">
+        <div class="bento-4">
+            <div class="gcard gcard-amber">
+                <div class="gcard-icon">TVA</div>
+                <div class="gcard-label">Total TVA Collectée</div>
+                <div class="gcard-value">@totalTVA.ToString("N3")</div>
+                <div class="gcard-sub">DT — toutes catégories</div>
+                <div class="gcard-sparkline"><svg viewBox="0 0 200 48" preserveAspectRatio="none"><polyline points="0,40 50,30 100,34 150,18 200,14" fill="none" stroke="white" stroke-width="2"/></svg></div>
+            </div>
+        </div>
+        <div class="bento-4">
+            <div class="gcard gcard-pink">
+                <div class="gcard-icon">TF</div>
+                <div class="gcard-label">Total Timbres Fiscaux</div>
+                <div class="gcard-value">@totalTimbres.ToString("N3")</div>
+                <div class="gcard-sub">DT — timbre tunisien</div>
+                <div class="gcard-sparkline"><svg viewBox="0 0 200 48" preserveAspectRatio="none"><polyline points="0,42 60,32 110,36 160,22 200,18" fill="none" stroke="white" stroke-width="2"/></svg></div>
+            </div>
+        </div>
+        <div class="bento-4">
+            <div class="gcard gcard-indigo">
+                <div class="gcard-icon">CF</div>
+                <div class="gcard-label">Charges Fiscales Total</div>
+                <div class="gcard-value">@((totalTVA + totalTimbres).ToString("N3"))</div>
+                <div class="gcard-sub">DT — TVA + Timbres</div>
+                <div class="gcard-sparkline"><svg viewBox="0 0 200 48" preserveAspectRatio="none"><polyline points="0,44 40,34 80,38 130,22 170,18 200,10" fill="none" stroke="white" stroke-width="2"/></svg></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BENTO ROW 2: Chart (5) + Declarative table (7) -->
+    <div class="bento">
+        <div class="bento-5">
+            <div class="card" style="margin-bottom:0;height:100%">
+                <div class="card-header">
+                    <div class="card-title">TVA par Taux</div>
+                    <span style="font-size:11px;color:var(--text-muted)">Assiette vs TVA</span>
+                </div>
+                @{ var maxTva = tvaData.Any(t => t.Assiette > 0) ? (double)tvaData.Max(t => t.Assiette) : 1.0; if(maxTva==0) maxTva=1; }
+                @if (tvaData.Any(t => t.MontantTVA > 0))
+                {
+                    <div style="display:flex;align-items:flex-end;gap:20px;height:180px;padding:8px 0 0">
+                        @foreach (var t in tvaData)
+                        {
+                            var pctA = (double)t.Assiette / maxTva * 100;
+                            var pctT = (double)t.MontantTVA / maxTva * 100;
+                            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+                                <div style="font-size:9px;color:var(--text-muted);font-weight:700">@t.MontantTVA.ToString("N0")</div>
+                                <div style="width:100%;display:flex;gap:3px;align-items:flex-end;height:140px">
+                                    <div style="flex:1;background:#c4b5fd;border-radius:4px 4px 0 0;height:@(pctA)%;min-height:2px"></div>
+                                    <div style="flex:1;background:#7c3aed;border-radius:4px 4px 0 0;height:@(pctT)%;min-height:2px"></div>
+                                </div>
+                                <div style="font-size:11px;font-weight:700;color:var(--text)">@t.Taux%</div>
+                            </div>
+                        }
+                    </div>
+                    <div style="display:flex;gap:14px;justify-content:center;font-size:11px;margin-top:10px;color:var(--text-muted)">
+                        <span><span style="display:inline-block;width:10px;height:10px;background:#c4b5fd;border-radius:2px;margin-right:4px;vertical-align:middle"></span>Assiette HT</span>
+                        <span><span style="display:inline-block;width:10px;height:10px;background:#7c3aed;border-radius:2px;margin-right:4px;vertical-align:middle"></span>TVA collectée</span>
+                    </div>
+                }
+                else
+                {
+                    <p style="text-align:center;color:var(--text-muted);padding:3rem">Aucune TVA pour cette période.</p>
+                }
+            </div>
+        </div>
+
+        <div class="bento-7">
+            <div class="card" style="margin-bottom:0">
+                <div class="card-header">
+                    <div class="card-title">État TVA — Déclaration</div>
+                    <span class="badge badge-warning">Modèle Tunisien</span>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Taux</th>
+                            <th style="text-align:right">Assiette HT (DT)</th>
+                            <th style="text-align:right">TVA (DT)</th>
+                            <th style="text-align:right">Part %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in tvaData)
+                        {
+                            <tr>
+                                <td><span class="tva-badge">@t.Taux%</span></td>
+                                <td style="text-align:right">@t.Assiette.ToString("N3")</td>
+                                <td style="text-align:right;font-weight:700">@t.MontantTVA.ToString("N3")</td>
+                                <td style="text-align:right;color:var(--text-muted)">
+                                    @(totalTVA > 0 ? (t.MontantTVA / totalTVA * 100).ToString("N1") + "%" : "—")
+                                </td>
+                            </tr>
+                        }
+                        <tr style="border-top:2px solid var(--border);font-weight:800;background:rgba(124,58,237,.04)">
+                            <td>TOTAL</td>
+                            <td style="text-align:right">@tvaData.Sum(t => t.Assiette).ToString("N3")</td>
+                            <td style="text-align:right;color:var(--purple)">@totalTVA.ToString("N3")</td>
+                            <td style="text-align:right">100%</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Timbre box -->
+                <div style="margin-top:18px;padding:16px;background:linear-gradient(135deg,#fef3c7,#fde68a);border-radius:var(--r-md);border:1px solid #fcd34d">
+                    <div style="font-weight:700;margin-bottom:10px;font-size:13px;color:#92400e">📮 Timbre Fiscal Tunisien</div>
+                    <div style="display:flex;justify-content:space-between;font-size:13px">
+                        <span style="color:#78350f">Total Timbres</span>
+                        <strong style="color:#92400e">@totalTimbres.ToString("N3") DT</strong>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:14px;margin-top:6px;padding-top:8px;border-top:1px solid #fcd34d">
+                        <span style="font-weight:700;color:#78350f">TVA + Timbres</span>
+                        <strong style="font-size:16px;color:#92400e">@((totalTVA + totalTimbres).ToString("N3")) DT</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<TVAViewModel> tvaData = new();
+    private decimal totalTVA;
+    private decimal totalTimbres;
+    private DateTime? dateDebut;
+    private DateTime? dateFin;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync() => await ChargerDonnees();
+
+    private async Task ChargerDonnees()
+    {
+        isLoading = true;
+        var raw = await DashboardService.GetTVAParTauxAsync(dateDebut, dateFin);
+        tvaData = new decimal[]{0m,7m,13m,19m}.Select(taux =>
+        {
+            var found = raw.FirstOrDefault(r => r.Taux == taux);
+            return new TVAViewModel { Taux=taux, Assiette=found?.Assiette??0m, MontantTVA=found?.MontantTVA??0m };
+        }).ToList();
+        totalTVA     = tvaData.Sum(t => t.MontantTVA);
+        totalTimbres = await DashboardService.GetTotalTimbresAsync(dateDebut, dateFin);
+        isLoading    = false;
+    }
+
+    private async Task ResetPeriode() { dateDebut=null; dateFin=null; await ChargerDonnees(); }
+
+    private class TVAViewModel { public decimal Taux{get;set;} public decimal Assiette{get;set;} public decimal MontantTVA{get;set;} }
+}

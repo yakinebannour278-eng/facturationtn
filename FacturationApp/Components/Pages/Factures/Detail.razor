@@ -1,0 +1,178 @@
+@page "/factures/{Id:int}"
+@rendermode InteractiveServer
+@inject IFactureService FactureService
+@inject NavigationManager Nav
+@using FacturationApp.Models
+@using FacturationApp.Services
+
+<PageTitle>Facture @(facture?.Numero ?? "") | FacturaTN</PageTitle>
+
+<LoadingSpinner IsLoading="@isLoading" />
+
+@if (!isLoading)
+{
+    @if (facture == null)
+    {
+        <div class="alert alert-danger">Facture introuvable.</div>
+    }
+    else
+    {
+        <div class="page-header no-print">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="page-title">Facture @facture.Numero</div>
+                <div style="display:flex;gap:.5rem">
+                    <button class="btn btn-outline" @onclick='() => Nav.NavigateTo("/factures")'>Retour</button>
+                    @if (facture.Statut == StatutFacture.Brouillon)
+                    {
+                        <a href="/factures/@facture.Id/modifier" class="btn btn-warning">Modifier</a>
+                    }
+                    <button class="btn btn-primary" onclick="window.print()">Imprimer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Facture printable card -->
+        <div class="card" style="max-width:860px;margin:0 auto;padding:2.5rem">
+
+            <!-- En-tête -->
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2rem">
+                <div>
+                    <div style="font-size:1.6rem;font-weight:800;color:var(--primary)">FacturaTN</div>
+                    <div style="font-size:.8rem;color:var(--text-muted);margin-top:.25rem">Application de Facturation Tunisienne</div>
+                    <div style="font-size:.85rem;margin-top:.6rem;line-height:1.7">
+                        12 Rue de la Liberté, Tunis 1000<br />
+                        Tél : +216 71 000 000<br />
+                        MF : 0000000/A/M/000
+                    </div>
+                </div>
+                <div style="text-align:right">
+                    <div style="font-size:2rem;font-weight:900;color:var(--surface-2);letter-spacing:.05em">FACTURE</div>
+                    <div style="font-size:1.3rem;font-weight:700;color:var(--primary);margin-top:-.5rem">@facture.Numero</div>
+                    <div style="font-size:.85rem;margin-top:.75rem;line-height:1.7">
+                        Date : <strong>@facture.DateFacture.ToString("dd/MM/yyyy")</strong><br />
+                        @if (facture.DateEcheance.HasValue)
+                        {
+                            <span>Échéance : <strong>@facture.DateEcheance.Value.ToString("dd/MM/yyyy")</strong><br /></span>
+                        }
+                        Statut :
+                        @switch (facture.Statut)
+                        {
+                            case StatutFacture.Brouillon: <span class="badge badge-secondary">Brouillon</span> break;
+                            case StatutFacture.Emise:     <span class="badge badge-info">Émise</span> break;
+                            case StatutFacture.Payee:     <span class="badge badge-success">Payée</span> break;
+                            case StatutFacture.Annulee:   <span class="badge badge-danger">Annulée</span> break;
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Infos client -->
+            <div style="background:var(--surface-2);border-radius:8px;padding:1.25rem;margin-bottom:2rem;border-left:4px solid var(--primary)">
+                <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:.5rem">
+                    Facturé à
+                </div>
+                <div style="font-weight:700;font-size:1rem">@facture.Client?.Nom @facture.Client?.Prenom</div>
+                <div style="font-size:.875rem;margin-top:.25rem">@facture.Client?.Adresse</div>
+                <div style="font-size:.875rem">@facture.Client?.CodePostal @facture.Client?.Ville</div>
+                @if (!string.IsNullOrEmpty(facture.Client?.MatriculeFiscale))
+                {
+                    <div style="font-size:.8rem;color:var(--text-muted);margin-top:.25rem">
+                        Matricule Fiscale : @facture.Client.MatriculeFiscale
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(facture.Client?.Telephone))
+                {
+                    <div style="font-size:.8rem;color:var(--text-muted)">Tél : @facture.Client.Telephone</div>
+                }
+            </div>
+
+            <!-- Lignes -->
+            <table style="width:100%;border-collapse:collapse;margin-bottom:1.5rem">
+                <thead>
+                    <tr style="background:var(--primary);color:#fff">
+                        <th style="padding:.65rem .85rem;text-align:left;font-size:.8rem">Désignation</th>
+                        <th style="padding:.65rem .85rem;text-align:center;font-size:.8rem">Qté</th>
+                        <th style="padding:.65rem .85rem;text-align:right;font-size:.8rem">P.U. HT (DT)</th>
+                        <th style="padding:.65rem .85rem;text-align:center;font-size:.8rem">TVA %</th>
+                        <th style="padding:.65rem .85rem;text-align:right;font-size:.8rem">Montant HT</th>
+                        <th style="padding:.65rem .85rem;text-align:right;font-size:.8rem">Montant TTC</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var l in facture.Lignes)
+                    {
+                        <tr style="border-bottom:1px solid var(--border)">
+                            <td style="padding:.55rem .85rem">@l.Designation</td>
+                            <td style="padding:.55rem .85rem;text-align:center">@l.Quantite</td>
+                            <td style="padding:.55rem .85rem;text-align:right">@l.PrixUnitaireHT.ToString("N3")</td>
+                            <td style="padding:.55rem .85rem;text-align:center">
+                                <span class="tva-badge">@l.TauxTVA%</span>
+                            </td>
+                            <td style="padding:.55rem .85rem;text-align:right">@l.MontantHT.ToString("N3")</td>
+                            <td style="padding:.55rem .85rem;text-align:right;font-weight:600">@l.MontantTTC.ToString("N3")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <!-- Totaux -->
+            <div style="display:flex;justify-content:flex-end">
+                <div style="min-width:320px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+                    <div style="padding:.6rem 1rem;display:flex;justify-content:space-between;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">Total HT</span>
+                        <strong>@facture.TotalHT.ToString("N3") DT</strong>
+                    </div>
+                    @{
+                        var groups = facture.Lignes.GroupBy(l => l.TauxTVA).OrderBy(g => g.Key);
+                    }
+                    @foreach (var g in groups)
+                    {
+                        <div style="padding:.6rem 1rem;display:flex;justify-content:space-between;border-bottom:1px solid var(--border);background:var(--surface-2)">
+                            <span style="color:var(--text-muted)">
+                                TVA @g.Key% / Base : @g.Sum(l => l.MontantHT).ToString("N3") DT
+                            </span>
+                            <span>@g.Sum(l => l.MontantTVA).ToString("N3") DT</span>
+                        </div>
+                    }
+                    <div style="padding:.6rem 1rem;display:flex;justify-content:space-between;border-bottom:1px solid var(--border)">
+                        <span style="color:var(--text-muted)">Total TVA</span>
+                        <strong>@facture.TotalTVA.ToString("N3") DT</strong>
+                    </div>
+                    <div style="padding:.6rem 1rem;display:flex;justify-content:space-between;border-bottom:1px solid var(--border);background:#fef3c7">
+                        <span style="color:#92400e;font-weight:500">Timbre Fiscal</span>
+                        <span style="color:#92400e;font-weight:600">@facture.MontantTimbre.ToString("N3") DT</span>
+                    </div>
+                    <div style="padding:.85rem 1rem;display:flex;justify-content:space-between;background:var(--primary);color:#fff">
+                        <span style="font-weight:800;font-size:1rem">TOTAL TTC</span>
+                        <span style="font-weight:800;font-size:1rem">@facture.TotalTTC.ToString("N3") DT</span>
+                    </div>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(facture.Notes))
+            {
+                <div style="margin-top:1.5rem;padding:1rem;background:var(--surface-2);border-radius:6px;font-size:.875rem;border-left:3px solid var(--border)">
+                    <strong style="font-size:.75rem;text-transform:uppercase;color:var(--text-muted)">Notes</strong><br />
+                    @facture.Notes
+                </div>
+            }
+
+            <div style="margin-top:2rem;padding-top:1rem;border-top:1px solid var(--border);text-align:center;font-size:.75rem;color:var(--text-muted)">
+                Paiement à 30 jours. Tout retard de paiement entraîne des pénalités de retard.<br />
+                Merci pour votre confiance — Document généré par FacturaTN
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private Facture? facture;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        facture   = await FactureService.GetByIdAsync(Id);
+        isLoading = false;
+    }
+}

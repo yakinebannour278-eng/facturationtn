@@ -1,0 +1,60 @@
+@rendermode InteractiveServer
+
+<!-- Floating glassmorphic top nav -->
+<header class="topbar-wrap">
+    <nav class="topbar">
+        <!-- Logo -->
+        <a href="/" class="topbar-logo">
+            <span class="topbar-logo-mark">FT</span>
+            <span class="topbar-logo-name">FacturaTN<span class="topbar-logo-dot">.</span></span>
+        </a>
+
+        <!-- Center nav links -->
+        <ul class="topbar-nav">
+            <li>
+                <NavLink href="/" Match="NavLinkMatch.All" class="topbar-link">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                    Ventes
+                </NavLink>
+            </li>
+            <li>
+                <NavLink href="/dashboard/taxes" class="topbar-link">
+                    <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M12 3a9 9 0 0 1 9 9h-9z"/></svg>
+                    Taxes
+                </NavLink>
+            </li>
+            <li>
+                <NavLink href="/clients" class="topbar-link">
+                    <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c1.8-3.5 4.6-5 7-5s5.2 1.5 7 5"/><path d="M19 8c0 1.9-1.6 3.5-3.5 3.5"/><path d="M22 20c-.8-2-2.4-3.5-4.5-4"/></svg>
+                    Clients
+                </NavLink>
+            </li>
+            <li>
+                <NavLink href="/produits" class="topbar-link">
+                    <svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg>
+                    Produits
+                </NavLink>
+            </li>
+            <li>
+                <NavLink href="/factures" class="topbar-link">
+                    <svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 12h6M9 16h4"/></svg>
+                    Factures
+                </NavLink>
+            </li>
+            <li>
+                <NavLink href="/parametres" class="topbar-link">
+                    <svg viewBox="0 0 24 24"><path d="M4 6h10M4 12h6M4 18h10"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+                    Paramètres
+                </NavLink>
+            </li>
+        </ul>
+
+        <!-- Right: CTA + avatar -->
+        <div class="topbar-right">
+            <a href="/factures/nouvelle" class="topbar-cta">
+                <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                Nouvelle Facture
+            </a>
+        </div>
+    </nav>
+</header>

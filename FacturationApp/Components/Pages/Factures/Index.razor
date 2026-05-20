@@ -1,0 +1,179 @@
+@page "/factures"
+@rendermode InteractiveServer
+@inject IFactureService FactureService
+@using FacturationApp.Models
+@using FacturationApp.Services
+
+<PageTitle>Factures | FacturaTN</PageTitle>
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <div class="page-title">Gestion des Factures</div>
+            <div class="page-subtitle">@factures.Count facture(s) trouvée(s)</div>
+        </div>
+        <a href="/factures/nouvelle" class="btn btn-primary">+ Nouvelle Facture</a>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert alert-success">@message</div>
+}
+
+<div class="filters-bar">
+    <input class="form-control" placeholder="🔍 Numéro, client..." value="@search" @oninput="OnSearchInput" />
+    <select class="form-control" @bind="filtreStatut" @bind:after="Rechercher">
+        <option value="">Tous les statuts</option>
+        <option value="0">Brouillon</option>
+        <option value="1">Émise</option>
+        <option value="2">Payée</option>
+        <option value="3">Annulée</option>
+    </select>
+    <input type="date" class="form-control" @bind="dateDebut" @bind:after="Rechercher" />
+    <input type="date" class="form-control" @bind="dateFin" @bind:after="Rechercher" />
+    <button class="btn btn-outline" @onclick="ResetFiltres">Réinitialiser</button>
+</div>
+
+<LoadingSpinner IsLoading="@isLoading" />
+
+@if (!isLoading)
+{
+    <div class="card">
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>N° Facture</th>
+                        <th>Client</th>
+                        <th>Date</th>
+                        <th>Échéance</th>
+                        <th style="text-align:right">HT</th>
+                        <th style="text-align:right">TVA</th>
+                        <th style="text-align:right">TTC</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!factures.Any())
+                    {
+                        <tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:3rem">Aucune facture trouvée.</td></tr>
+                    }
+                    @foreach (var f in factures)
+                    {
+                        <tr>
+                            <td><span style="font-weight:700;color:var(--purple)">@f.Numero</span></td>
+                            <td><span style="font-weight:600">@f.Client?.Nom @f.Client?.Prenom</span></td>
+                            <td style="white-space:nowrap;color:var(--text-muted)">@f.DateFacture.ToString("dd/MM/yyyy")</td>
+                            <td style="white-space:nowrap;color:@(f.DateEcheance < DateTime.Today && f.Statut == StatutFacture.Emise ? "#ef4444" : "var(--text-muted)")">
+                                @(f.DateEcheance?.ToString("dd/MM/yyyy") ?? "—")
+                            </td>
+                            <td style="text-align:right;color:var(--text-muted)">@f.TotalHT.ToString("N3")</td>
+                            <td style="text-align:right;color:var(--text-muted)">@f.TotalTVA.ToString("N3")</td>
+                            <td style="text-align:right;font-weight:800;color:var(--purple)">@f.TotalTTC.ToString("N3") DT</td>
+                            <td>@GetStatutBadge(f.Statut)</td>
+                            <td style="white-space:nowrap">
+                                <a href="/factures/@f.Id" class="btn btn-sm btn-outline">Voir</a>
+                                @if (f.Statut == StatutFacture.Brouillon)
+                                {
+                                    <a href="/factures/@f.Id/modifier" class="btn btn-sm btn-warning" style="margin-left:4px">Éditer</a>
+                                }
+                                @if (f.Statut != StatutFacture.Annulee)
+                                {
+                                    <button class="btn btn-sm btn-danger" @onclick="() => factureASupprimer = f" style="margin-left:4px">Annuler</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (factures.Any(f => f.Statut != StatutFacture.Annulee))
+    {
+        var actives = factures.Where(f => f.Statut != StatutFacture.Annulee).ToList();
+        <div class="bento" style="margin-top:4px">
+            <div class="bento-4">
+                <div class="card" style="margin-bottom:0;border-left:3px solid var(--purple)">
+                    <div class="kpi-label">Sous-total HT</div>
+                    <div style="font-size:20px;font-weight:800;color:var(--text)">@actives.Sum(f => f.TotalHT).ToString("N3") DT</div>
+                </div>
+            </div>
+            <div class="bento-4">
+                <div class="card" style="margin-bottom:0;border-left:3px solid var(--amber)">
+                    <div class="kpi-label">Sous-total TVA</div>
+                    <div style="font-size:20px;font-weight:800;color:var(--text)">@actives.Sum(f => f.TotalTVA).ToString("N3") DT</div>
+                </div>
+            </div>
+            <div class="bento-4">
+                <div class="card" style="margin-bottom:0;border-left:3px solid var(--teal)">
+                    <div class="kpi-label">Sous-total TTC</div>
+                    <div style="font-size:20px;font-weight:800;color:var(--purple)">@actives.Sum(f => f.TotalTTC).ToString("N3") DT</div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+<ConfirmDialog
+    Visible="@(factureASupprimer != null)"
+    Title="Annuler la facture ?"
+    Message="@($"Annuler la facture {factureASupprimer?.Numero} ? Cette action est définitive.")"
+    Icon="🧾"
+    ConfirmLabel="Annuler la facture"
+    OnConfirm="AnnulerConfirme"
+    OnCancel="() => factureASupprimer = null" />
+
+@code {
+    private List<Facture> factures = new();
+    private Facture? factureASupprimer;
+    private bool isLoading = true;
+    private string search = "";
+    private string filtreStatut = "";
+    private DateTime? dateDebut;
+    private DateTime? dateFin;
+    private string message = "";
+    private System.Timers.Timer? debounceTimer;
+
+    protected override async Task OnInitializedAsync() => await Rechercher();
+
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        search = e.Value?.ToString() ?? "";
+        debounceTimer?.Stop();
+        debounceTimer = new System.Timers.Timer(350);
+        debounceTimer.Elapsed += async (s, ev) => { debounceTimer?.Stop(); await InvokeAsync(async () => { await Rechercher(); StateHasChanged(); }); };
+        debounceTimer.AutoReset = false;
+        debounceTimer.Start();
+    }
+
+    private async Task Rechercher()
+    {
+        isLoading = true;
+        StatutFacture? statut = int.TryParse(filtreStatut, out var s) ? (StatutFacture)s : null;
+        factures = await FactureService.GetAllAsync(search, null, statut, dateDebut, dateFin);
+        isLoading = false;
+    }
+
+    private async Task AnnulerConfirme()
+    {
+        if (factureASupprimer == null) return;
+        await FactureService.DeleteAsync(factureASupprimer.Id);
+        message = $"Facture {factureASupprimer.Numero} annulée.";
+        factureASupprimer = null;
+        await Rechercher();
+    }
+
+    private async Task ResetFiltres() { search=""; filtreStatut=""; dateDebut=null; dateFin=null; await Rechercher(); }
+
+    private RenderFragment GetStatutBadge(StatutFacture statut) => statut switch
+    {
+        StatutFacture.Brouillon => @<span class="badge badge-secondary">Brouillon</span>,
+        StatutFacture.Emise     => @<span class="badge badge-info">Émise</span>,
+        StatutFacture.Payee     => @<span class="badge badge-success">Payée</span>,
+        StatutFacture.Annulee   => @<span class="badge badge-danger">Annulée</span>,
+        _                       => @<span class="badge">—</span>
+    };
+}
