@@ -81,3 +81,4 @@ public class TVAParTaux
     public decimal Assiette { get; set; }
     public decimal Montant { get; set; }
 }
+
