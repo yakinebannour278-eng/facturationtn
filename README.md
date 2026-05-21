@@ -116,3 +116,95 @@ Main tables:
 - **Factures** - Invoice records
 - **Produits** - Product list
 - **Parametres** - Configuration
+
+
+## Database Diagram
+
+```
+┌─────────────┐
+│   Client    │
+├─────────────┤
+│ Id (PK)     │
+│ Nom         │
+│ Email       │
+│ Telephone   │
+│ Adresse     │
+└─────────────┘
+       │
+       │ 1:Many
+       │
+       ▼
+┌─────────────────┐
+│    Facture      │
+├─────────────────┤
+│ Id (PK)         │
+│ Numero          │
+│ ClientId (FK)   │
+│ DateFacture     │
+│ MontantHT       │
+│ MontantTVA      │
+│ MontantTTC      │
+│ Status          │
+└─────────────────┘
+       │
+       │ 1:Many
+       │
+       ▼
+┌──────────────────┐
+│  LigneFacture    │
+├──────────────────┤
+│ Id (PK)          │
+│ FactureId (FK)   │
+│ ProduitId (FK)   │
+│ Quantite         │
+│ PrixUnitaireHT   │
+│ MontantTVA       │
+│ MontantTTC       │
+└──────────────────┘
+       │
+       │ Many:1
+       │
+       ▼
+┌─────────────┐
+│  Produit    │
+├─────────────┤
+│ Id (PK)     │
+│ Reference   │
+│ Designation │
+│ PrixHT      │
+│ TauxTVA     │
+└─────────────┘
+
+Additional Tables:
+├── Parametre (App settings: key-value pairs)
+└── TVAParTaux (Tax rates configuration)
+```
+
+---
+
+## Core Entities
+
+| Entity | Purpose | Developer |
+|--------|---------|-----------|
+| **Client** | Stores customer information | Dev 1 |
+| **Facture** | Manages invoices | Dev 1 |
+| **LigneFacture** | Invoice line items | Both |
+| **Produit** | Product/service catalog | Dev 2 |
+| **Parametre** | Application configuration | Dev 2 |
+
+---
+
+## Key Relationships
+
+### 1. Client → Facture (1:Many)
+- One client can have multiple invoices
+- Each invoice belongs to one client
+- **Example**: Client "ABC Corp" has invoices INV-001, INV-002, INV-003
+
+### 2. Facture → LigneFacture (1:Many)
+- One invoice has multiple line items
+- **Example**: Invoice INV-001 has 3 products listed
+
+### 3. LigneFacture → Produit (Many:1)
+- Multiple line items can reference the same product
+- **Example**: Product "Laptop" appears in 5 different invoices
