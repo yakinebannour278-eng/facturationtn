@@ -182,17 +182,6 @@ Additional Tables:
 
 ---
 
-## Core Entities
-
-| Entity | Purpose | Developer |
-|--------|---------|-----------|
-| **Client** | Stores customer information | Dev 1 |
-| **Facture** | Manages invoices | Dev 1 |
-| **LigneFacture** | Invoice line items | Both |
-| **Produit** | Product/service catalog | Dev 2 |
-| **Parametre** | Application configuration | Dev 2 |
-
----
 
 ## Key Relationships
 
