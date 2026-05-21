@@ -51,10 +51,26 @@
 
         <!-- Right: CTA + avatar -->
         <div class="topbar-right">
-            <a href="/factures/nouvelle" class="topbar-cta">
-                <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-                Nouvelle Facture
-            </a>
+            <AuthorizeView>
+                <Authorized Context="authState">
+                    <AuthorizeView Roles="Admin">
+                        <Authorized>
+                            <a href="/factures/nouvelle" class="topbar-cta">
+                                <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                                Nouvelle Facture
+                            </a>
+                        </Authorized>
+                    </AuthorizeView>
+                    <span class="topbar-user">@authState.User.Identity?.Name</span>
+                    <form method="post" action="/api/auth/logout" data-enhance="false" class="topbar-form">
+                        <button type="submit" class="topbar-auth">Deconnexion</button>
+                    </form>
+                </Authorized>
+                <NotAuthorized>
+                    <a href="/login" class="topbar-auth">Connexion</a>
+                    <a href="/register" class="topbar-cta">Inscription</a>
+                </NotAuthorized>
+            </AuthorizeView>
         </div>
     </nav>
 </header>

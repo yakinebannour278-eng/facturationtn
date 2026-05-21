@@ -1,5 +1,6 @@
 @page "/parametres"
 @rendermode InteractiveServer
+@attribute [Authorize]
 @inject IParametreService ParametreService
 @using FacturationApp.Models
 @using FacturationApp.Services
@@ -51,17 +52,31 @@ else
                             <td><code style="font-size:.75rem;color:var(--primary)">@p.Cle</code></td>
                             <td style="color:var(--text-muted);font-size:.85rem">@p.Description</td>
                             <td>
-                                @if (p.Cle == "FACTURE_MENTIONS_LEGALES")
-                                {
-                                    <textarea class="form-control" rows="3" @bind="p.Valeur" style="font-size:.8rem"></textarea>
-                                }
-                                else
-                                {
-                                    <input class="form-control" @bind="p.Valeur" />
-                                }
+                                <AuthorizeView Roles="Admin">
+                                    <Authorized>
+                                        @if (p.Cle == "FACTURE_MENTIONS_LEGALES")
+                                        {
+                                            <textarea class="form-control" rows="3" @bind="p.Valeur" style="font-size:.8rem"></textarea>
+                                        }
+                                        else
+                                        {
+                                            <input class="form-control" @bind="p.Valeur" />
+                                        }
+                                    </Authorized>
+                                    <NotAuthorized>
+                                        <span style="font-size:.85rem;color:var(--text-muted)">@p.Valeur</span>
+                                    </NotAuthorized>
+                                </AuthorizeView>
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-primary" @onclick="() => SauvegarderParam(p)">Sauver</button>
+                                <AuthorizeView Roles="Admin">
+                                    <Authorized>
+                                        <button class="btn btn-sm btn-primary" @onclick="() => SauvegarderParam(p)">Sauver</button>
+                                    </Authorized>
+                                    <NotAuthorized>
+                                        <span style="color:var(--text-muted);font-size:.8rem">Lecture seule</span>
+                                    </NotAuthorized>
+                                </AuthorizeView>
                             </td>
                         </tr>
                     }
@@ -70,9 +85,13 @@ else
         </div>
     }
 
-    <div style="display:flex;justify-content:flex-end;margin-top:1rem">
-        <button class="btn btn-primary" @onclick="SauvegarderTout">Sauvegarder tout</button>
-    </div>
+    <AuthorizeView Roles="Admin">
+        <Authorized>
+            <div style="display:flex;justify-content:flex-end;margin-top:1rem">
+                <button class="btn btn-primary" @onclick="SauvegarderTout">Sauvegarder tout</button>
+            </div>
+        </Authorized>
+    </AuthorizeView>
 }
 
 <!-- Info box -->

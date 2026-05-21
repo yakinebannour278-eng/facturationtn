@@ -1,0 +1,38 @@
+@page "/login"
+@rendermode InteractiveServer
+
+<PageTitle>Connexion | FacturaTN</PageTitle>
+
+<div class="auth-page">
+    <div class="auth-panel">
+        <div class="auth-title">Connexion</div>
+        <div class="auth-subtitle">Accedez a votre espace FacturaTN.</div>
+
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <div class="auth-alert">@Error</div>
+        }
+
+        <form method="post" action="/api/auth/login" data-enhance="false" class="auth-form">
+            <div>
+                <label>Email</label>
+                <input type="email" name="email" required autocomplete="username" />
+            </div>
+            <div>
+                <label>Mot de passe</label>
+                <input type="password" name="password" required autocomplete="current-password" />
+            </div>
+            <button type="submit">Se connecter</button>
+        </form>
+
+        <div class="auth-footer">
+            Pas encore de compte ?
+            <a href="/register">Creer un compte</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+}

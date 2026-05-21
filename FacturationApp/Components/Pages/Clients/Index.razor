@@ -1,5 +1,6 @@
 @page "/clients"
 @rendermode InteractiveServer
+@attribute [Authorize]
 @inject IClientService ClientService
 @inject NavigationManager Nav
 @using FacturationApp.Models
@@ -13,7 +14,11 @@
             <div class="page-title">Gestion des Clients</div>
             <div class="page-subtitle">@clients.Count client(s) trouvé(s)</div>
         </div>
-        <button class="btn btn-primary" @onclick="NouveauClient">Nouveau Client</button>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <button class="btn btn-primary" @onclick="NouveauClient">Nouveau Client</button>
+            </Authorized>
+        </AuthorizeView>
     </div>
 </div>
 
@@ -88,8 +93,15 @@
                                 { <span class="badge badge-danger">Inactif</span> }
                             </td>
                             <td style="white-space:nowrap">
-                                <button class="btn btn-sm btn-outline" @onclick="() => Modifier(c)" title="Modifier">Editer</button>
-                                <button class="btn btn-sm btn-danger" @onclick="() => ConfirmerSuppression(c)" title="Désactiver">Suppr</button>
+                                <AuthorizeView Roles="Admin">
+                                    <Authorized>
+                                        <button class="btn btn-sm btn-outline" @onclick="() => Modifier(c)" title="Modifier">Editer</button>
+                                        <button class="btn btn-sm btn-danger" @onclick="() => ConfirmerSuppression(c)" title="Désactiver">Suppr</button>
+                                    </Authorized>
+                                    <NotAuthorized>
+                                        <span style="color:var(--text-muted);font-size:.8rem">Lecture seule</span>
+                                    </NotAuthorized>
+                                </AuthorizeView>
                             </td>
                         </tr>
                     }

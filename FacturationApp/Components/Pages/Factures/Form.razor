@@ -1,6 +1,7 @@
 @page "/factures/nouvelle"
 @page "/factures/{Id:int}/modifier"
 @rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
 @inject IFactureService FactureService
 @inject IClientService ClientService
 @inject IProduitService ProduitService

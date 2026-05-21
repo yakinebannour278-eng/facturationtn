@@ -1,5 +1,6 @@
 @page "/factures/{Id:int}"
 @rendermode InteractiveServer
+@attribute [Authorize]
 @inject IFactureService FactureService
 @inject NavigationManager Nav
 @using FacturationApp.Models
@@ -22,10 +23,14 @@
                 <div class="page-title">Facture @facture.Numero</div>
                 <div style="display:flex;gap:.5rem">
                     <button class="btn btn-outline" @onclick='() => Nav.NavigateTo("/factures")'>Retour</button>
-                    @if (facture.Statut == StatutFacture.Brouillon)
-                    {
-                        <a href="/factures/@facture.Id/modifier" class="btn btn-warning">Modifier</a>
-                    }
+                    <AuthorizeView Roles="Admin">
+                        <Authorized>
+                            @if (facture.Statut == StatutFacture.Brouillon)
+                            {
+                                <a href="/factures/@facture.Id/modifier" class="btn btn-warning">Modifier</a>
+                            }
+                        </Authorized>
+                    </AuthorizeView>
                     <button class="btn btn-primary" onclick="window.print()">Imprimer</button>
                 </div>
             </div>

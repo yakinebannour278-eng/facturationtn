@@ -1,0 +1,42 @@
+@page "/register"
+@rendermode InteractiveServer
+
+<PageTitle>Inscription | FacturaTN</PageTitle>
+
+<div class="auth-page">
+    <div class="auth-panel">
+        <div class="auth-title">Inscription</div>
+        <div class="auth-subtitle">Creez un compte pour utiliser l'application.</div>
+
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <div class="auth-alert">@Error</div>
+        }
+
+        <form method="post" action="/api/auth/register" data-enhance="false" class="auth-form">
+            <div>
+                <label>Email</label>
+                <input type="email" name="email" required autocomplete="username" />
+            </div>
+            <div>
+                <label>Mot de passe</label>
+                <input type="password" name="password" required minlength="6" autocomplete="new-password" />
+            </div>
+            <div>
+                <label>Confirmer le mot de passe</label>
+                <input type="password" name="confirmPassword" required minlength="6" autocomplete="new-password" />
+            </div>
+            <button type="submit">Creer le compte</button>
+        </form>
+
+        <div class="auth-footer">
+            Deja inscrit ?
+            <a href="/login">Se connecter</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+}

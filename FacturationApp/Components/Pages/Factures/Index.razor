@@ -1,5 +1,6 @@
 @page "/factures"
 @rendermode InteractiveServer
+@attribute [Authorize]
 @inject IFactureService FactureService
 @using FacturationApp.Models
 @using FacturationApp.Services
@@ -12,7 +13,11 @@
             <div class="page-title">Gestion des Factures</div>
             <div class="page-subtitle">@factures.Count facture(s) trouvée(s)</div>
         </div>
-        <a href="/factures/nouvelle" class="btn btn-primary">+ Nouvelle Facture</a>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <a href="/factures/nouvelle" class="btn btn-primary">+ Nouvelle Facture</a>
+            </Authorized>
+        </AuthorizeView>
     </div>
 </div>
 
@@ -75,14 +80,18 @@
                             <td>@GetStatutBadge(f.Statut)</td>
                             <td style="white-space:nowrap">
                                 <a href="/factures/@f.Id" class="btn btn-sm btn-outline">Voir</a>
-                                @if (f.Statut == StatutFacture.Brouillon)
-                                {
-                                    <a href="/factures/@f.Id/modifier" class="btn btn-sm btn-warning" style="margin-left:4px">Éditer</a>
-                                }
-                                @if (f.Statut != StatutFacture.Annulee)
-                                {
-                                    <button class="btn btn-sm btn-danger" @onclick="() => factureASupprimer = f" style="margin-left:4px">Annuler</button>
-                                }
+                                <AuthorizeView Roles="Admin">
+                                    <Authorized>
+                                        @if (f.Statut == StatutFacture.Brouillon)
+                                        {
+                                            <a href="/factures/@f.Id/modifier" class="btn btn-sm btn-warning" style="margin-left:4px">Éditer</a>
+                                        }
+                                        @if (f.Statut != StatutFacture.Annulee)
+                                        {
+                                            <button class="btn btn-sm btn-danger" @onclick="() => factureASupprimer = f" style="margin-left:4px">Annuler</button>
+                                        }
+                                    </Authorized>
+                                </AuthorizeView>
                             </td>
                         </tr>
                     }

@@ -1,5 +1,6 @@
 @page "/produits"
 @rendermode InteractiveServer
+@attribute [Authorize]
 @inject IProduitService ProduitService
 @using FacturationApp.Models
 @using FacturationApp.Services
@@ -12,7 +13,11 @@
             <div class="page-title">Gestion des Produits &amp; Services</div>
             <div class="page-subtitle">@produits.Count produit(s) trouvé(s)</div>
         </div>
-        <button class="btn btn-primary" @onclick="NouveauProduit">Nouveau Produit</button>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <button class="btn btn-primary" @onclick="NouveauProduit">Nouveau Produit</button>
+            </Authorized>
+        </AuthorizeView>
     </div>
 </div>
 
@@ -95,8 +100,15 @@
                                 { <span class="badge badge-danger">Inactif</span> }
                             </td>
                             <td style="white-space:nowrap">
-                                <button class="btn btn-sm btn-outline" @onclick="() => Modifier(p)">Editer</button>
-                                <button class="btn btn-sm btn-danger" @onclick="() => produitASupprimer = p">Suppr</button>
+                                <AuthorizeView Roles="Admin">
+                                    <Authorized>
+                                        <button class="btn btn-sm btn-outline" @onclick="() => Modifier(p)">Editer</button>
+                                        <button class="btn btn-sm btn-danger" @onclick="() => produitASupprimer = p">Suppr</button>
+                                    </Authorized>
+                                    <NotAuthorized>
+                                        <span style="color:var(--text-muted);font-size:.8rem">Lecture seule</span>
+                                    </NotAuthorized>
+                                </AuthorizeView>
                             </td>
                         </tr>
                     }
