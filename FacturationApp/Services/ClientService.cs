@@ -3,7 +3,6 @@ using FacturationApp.Data;
 using FacturationApp.Models;
 
 namespace FacturationApp.Services;
-
 public interface IClientService
 {
     Task<List<Client>> GetAllAsync(string? search = null, bool? actif = null);
