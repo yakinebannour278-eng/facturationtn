@@ -41,3 +41,4 @@ public class Client
     // Navigation
     public ICollection<Facture> Factures { get; set; } = new List<Facture>();
 }
+
